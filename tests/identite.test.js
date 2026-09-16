@@ -12,8 +12,10 @@ describe('Critère 1 — nom', () => {
   });
 
   it('accepte un nom de 2 et de 20 caractères', () => {
-    assert.equal(validatePersona(avec({ nom: 'ab' })).ok, true);
-    assert.equal(validatePersona(avec({ nom: 'a'.repeat(20) })).ok, true);
+    // L'accueil suit le nom : le critère 3 exige qu'il le contienne.
+    for (const nom of ['ab', 'a'.repeat(20)]) {
+      assert.equal(validatePersona(avec({ nom, accueil: `Bonjour, je suis ${nom} !` })).ok, true);
+    }
   });
 
   it('refuse un nom de 1 et de 21 caractères', () => {
