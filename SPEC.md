@@ -23,14 +23,20 @@ L'assistant de tri et de recyclage a une identité reconnaissable dès l'ouvertu
 5. **Réponses signées** — Quand l'assistant répond, sa ligne dans `#messages` commence par `TriMalin : ` au lieu de `Assistant : `. Les lignes de l'utilisateur commencent toujours par `Vous : `.
 6. **Contrat** — Les tests de contrat CP1 (`tests/contrat/` et `browser/contrat.spec.js`) et les tests existants restent verts : `npm run verify` passe.
 
+## Cerveau tri et recyclage
+
+TriMalin doit savoir répondre aux questions de tri, y compris aux trois suggestions. Les règles restent dans `brain.js`, sans IA.
+
+7. **Déchets connus** — Quand le message contient un des mots `plastique`, `verre`, `papier`, `carton`, `pile` ou `compost`, le système répond par la consigne de tri de ce déchet. Chaque déchet a sa propre réponse, différente des autres et différente du repli. Les trois questions suggérées reçoivent ainsi une consigne : « Où jeter mes piles ? » → pile, « Le verre va dans quel bac ? » → verre, « Que faire de mes épluchures ? » → compost.
+8. **Mot dans une phrase** — Quand le mot connu est au milieu d'une phrase, avec majuscules, accents, ponctuation, pluriel (`piles`, `bocaux`, `épluchures`) ou synonyme (`batterie` → pile, `bocal` → verre, `journal` → papier, `brique` → carton, `flacon` → plastique, `épluchure` → compost, `coucou`/`hello` → salut), le système répond comme pour le mot seul. Seuls les mots entiers comptent : « tester » ne déclenche pas « test ». Quand une phrase contient un déchet et une salutation, c'est le déchet qui gagne.
+9. **Aide et repli** — La réponse à « aide » cite les déchets connus. Un message sans mot connu reçoit une réponse de repli qui renvoie vers « aide ».
+
 ## Hors périmètre
 
 - Pas de choix ni de modification de l'identité par l'utilisateur.
 - Pas d'image, d'avatar ni de logo.
 - Pas d'appel à une IA ni à un service extérieur.
-- Pas de changement des règles de réponse de `brain.js` : les textes des réponses restent les mêmes.
 - Pas de changement du titre de l'onglet (`<title>`) ni de la mémoire, au-delà de ce que demandent les critères 1 à 5.
-- Pas de réponse nouvelle aux trois questions suggérées : aujourd'hui, `brain.js` leur renvoie sa réponse de repli, et c'est normal.
 - Aucune dépendance ajoutée, aucun test existant modifié.
 
 ## Données et fonctions attendues
@@ -52,6 +58,7 @@ L'assistant de tri et de recyclage a une identité reconnaissable dès l'ouvertu
 - Le nom, l'emoji, l'accueil et les suggestions affichés viennent de `persona.js` : leurs textes ne sont écrits qu'à un seul endroit.
 - `persona.js` est ajouté à la liste blanche de `server/app.js`, dans `FICHIERS` et dans `TYPES`.
 - Tests attendus : `tests/identite.test.js` (Node) et `browser/identite.spec.js` (navigateur).
+- **`public/js/brain.js`** : `replyTo(message)` découpe le message en mots (minuscules, sans accents, sans ponctuation), applique les synonymes, puis cherche le premier mot connu dans l'ordre de priorité déchets, aide, test, salut. Toujours sans `document`. Tests attendus : `tests/tri.test.js`.
 
 ## Questions ouvertes
 
