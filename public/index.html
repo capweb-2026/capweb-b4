@@ -8,12 +8,14 @@
 </head>
 <body>
   <header>
-    <h1>Cap Web</h1>
+    <h1><span id="emoji" aria-hidden="true"></span> <span id="nom"></span></h1>
     <p>Assistant fictif pour apprendre le web. Réponse à règles, pas une IA réelle.</p>
   </header>
   <main>
     <section aria-labelledby="titre-chat">
       <h2 id="titre-chat">Discussion</h2>
+      <p id="accueil"></p>
+      <div id="suggestions" aria-label="Questions suggérées"></div>
       <ul id="messages" aria-live="polite" aria-label="Messages"></ul>
       <form id="chat-form">
         <label for="message">Votre message (280 caractères maximum)</label>

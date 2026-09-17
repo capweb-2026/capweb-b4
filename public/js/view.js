@@ -1,9 +1,9 @@
 // Affichage de l'historique. Aucune règle de réponse ici.
 
-export function renderMessages(messages, container) {
+export function renderMessages(messages, container, nom = 'Assistant') {
   const lignes = messages.map((msg) => {
     const li = document.createElement('li');
-    const etiquette = msg.role === 'user' ? 'Vous' : 'Assistant';
+    const etiquette = msg.role === 'user' ? 'Vous' : nom;
     li.textContent = `${etiquette} : ${msg.text}`;
     if (msg.role === 'assistant') {
       li.classList.add('bot');
