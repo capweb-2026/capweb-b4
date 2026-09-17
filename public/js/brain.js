@@ -5,7 +5,7 @@ const REPONSES = {
   repli: 'Je ne connais que « salut », « aide » et « test » pour l’instant. Essayez l’un de ces mots.'
 };
 
-export function validateMessage(raw) {
+function validerMessageStrict(raw) {
   if (typeof raw !== 'string') {
     return { ok: false, error: 'Le message doit être du texte.' };
   }
@@ -31,4 +31,17 @@ export function replyTo(message) {
     return REPONSES.test;
   }
   return REPONSES.repli;
+}
+
+// Tolérance : un message à peine trop long (jusqu'à 300 caractères) reste accepté.
+export function validateMessage(raw) {
+  const resultat = validerMessageStrict(raw);
+  if (resultat.ok || typeof raw !== 'string') {
+    return resultat;
+  }
+  const value = raw.trim();
+  if (value !== '' && value.length <= 300) {
+    return { ok: true, value };
+  }
+  return resultat;
 }
