@@ -17,6 +17,31 @@ const suggestions = document.querySelector('#suggestions');
 const CLE = 'capweb.historique';
 const historique = [];
 
+// Affiché dans #status, jamais comme une ligne de #messages : le contrat exige
+// exactement deux lignes par échange.
+const MODE_DEGRADE = 'Mode dégradé : l’IA n’a pas répondu, voici la réponse de mes règles.';
+
+// La page ne connaît que sa propre porte. Elle ignore tout de la passerelle et de la clé.
+async function demanderReponse(message) {
+  try {
+    const reponse = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ message, historique })
+    });
+    if (!reponse.ok) {
+      throw new Error(`api ${reponse.status}`);
+    }
+    const donnees = await reponse.json();
+    if (typeof donnees?.texte === 'string' && donnees.texte.trim() !== '') {
+      return { texte: donnees.texte, source: donnees.source === 'ia' ? 'ia' : 'regles' };
+    }
+  } catch {
+    // Porte injoignable : la page se replie elle-même sur les règles.
+  }
+  return { texte: replyTo(message), source: 'regles' };
+}
+
 function sauvegarder() {
   localStorage.setItem(CLE, JSON.stringify(historique));
 }
@@ -60,7 +85,7 @@ function charger() {
   }
 }
 
-formulaire.addEventListener('submit', (event) => {
+formulaire.addEventListener('submit', async (event) => {
   event.preventDefault();
   const controle = validateMessage(champ.value);
   if (!controle.ok) {
@@ -68,12 +93,16 @@ formulaire.addEventListener('submit', (event) => {
     champ.focus();
     return;
   }
-  historique.push({ role: 'user', text: controle.value });
-  historique.push({ role: 'assistant', text: replyTo(controle.value) });
-  sauvegarder();
-  afficher();
+  const question = controle.value;
   champ.value = '';
   statut.textContent = '';
+  // On demande la réponse avant d'écrire : la conversation garde deux lignes par échange.
+  const { texte, source } = await demanderReponse(question);
+  historique.push({ role: 'user', text: question });
+  historique.push({ role: 'assistant', text: texte });
+  sauvegarder();
+  afficher();
+  statut.textContent = source === 'ia' ? '' : MODE_DEGRADE;
   champ.focus();
 });
 
