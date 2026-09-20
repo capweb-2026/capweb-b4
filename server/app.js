@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { repondre, fournisseurPasserelle } from './ia.js';
 
 // Liste explicite : seuls ces chemins publics sont servis.
 const FICHIERS = {
@@ -23,7 +24,23 @@ const TYPES = {
   'js/view.js': 'text/javascript; charset=utf-8'
 };
 
-export function createApp({ publicDir, version = 'dev' } = {}) {
+// Corps d'une requête, avec une limite : un client ne dicte pas la mémoire du serveur.
+async function lireCorps(req, octetsMax = 64 * 1024) {
+  const morceaux = [];
+  let taille = 0;
+  for await (const morceau of req) {
+    taille += morceau.length;
+    if (taille > octetsMax) {
+      throw new Error('corps trop long');
+    }
+    morceaux.push(morceau);
+  }
+  return Buffer.concat(morceaux).toString('utf8');
+}
+
+export function createApp({ publicDir, version = 'dev', fournisseurIA, delaiMax = 3500 } = {}) {
+  // Sans les variables d'environnement, le fournisseur est null : l'assistant tourne aux règles.
+  const fournisseur = fournisseurIA === undefined ? fournisseurPasserelle(process.env) : fournisseurIA;
   const serveur = http.createServer((req, res) => {
     traiter(req, res).catch(() => {
       // Dernier filet : ne jamais laisser la requête sans réponse.
@@ -34,20 +51,47 @@ export function createApp({ publicDir, version = 'dev' } = {}) {
     });
   });
 
+  // Seule porte non statique : elle passe le message au module IA et renvoie {texte, source}.
+  async function traiterChat(req, res) {
+    let message = '';
+    let historique = [];
+    try {
+      const donnees = JSON.parse(await lireCorps(req));
+      message = donnees?.message;
+      if (Array.isArray(donnees?.historique)) {
+        historique = donnees.historique;
+      }
+    } catch {
+      // Corps illisible : on laisse la validation répondre, sans planter.
+    }
+    const resultat = await repondre({ message, fournisseur, historique, delaiMax });
+    const corps = JSON.stringify(resultat);
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-length': Buffer.byteLength(corps) });
+    res.end(corps);
+  }
+
   async function traiter(req, res) {
     const methode = (req.method ?? 'GET').toUpperCase();
-    // Seules GET et HEAD sont autorisées (outillage statique J1).
-    if (methode !== 'GET' && methode !== 'HEAD') {
-      res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8' });
-      res.end('Méthode non autorisée');
-      return;
-    }
-    let chemin = '/';
+    let chemin = null;
     try {
       // URL puis décodage : tout encodage suspect hors liste donne 404.
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       chemin = decodeURIComponent(url.pathname);
     } catch {
+      chemin = null;
+    }
+    // La seule exception à « GET et HEAD uniquement ».
+    if (methode === 'POST' && chemin === '/api/chat') {
+      await traiterChat(req, res);
+      return;
+    }
+    // Toutes les autres méthodes restent refusées (outillage statique J1).
+    if (methode !== 'GET' && methode !== 'HEAD') {
+      res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8' });
+      res.end('Méthode non autorisée');
+      return;
+    }
+    if (chemin === null) {
       res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
       res.end('Non trouvé');
       return;
