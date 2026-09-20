@@ -21,12 +21,15 @@ const historique = [];
 // exactement deux lignes par échange.
 const MODE_DEGRADE = 'Mode dégradé : l’IA n’a pas répondu, voici la réponse de mes règles.';
 
+// PREUVE CP3 : fausse clé glissée dans public/ pour vérifier que la barrière la refuse.
+const CAPWEB_IA_CLE = 'sk-fausse-cle-de-demonstration-0000';
+
 // La page ne connaît que sa propre porte. Elle ignore tout de la passerelle et de la clé.
 async function demanderReponse(message) {
   try {
     const reponse = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${CAPWEB_IA_CLE}` },
       body: JSON.stringify({ message, historique })
     });
     if (!reponse.ok) {
